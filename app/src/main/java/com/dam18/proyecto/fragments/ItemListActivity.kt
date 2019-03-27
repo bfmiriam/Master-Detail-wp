@@ -14,6 +14,12 @@ import com.dam18.proyecto.fragments.dummy.DummyContent
 import kotlinx.android.synthetic.main.activity_item_list.*
 import kotlinx.android.synthetic.main.item_list_content.view.*
 import kotlinx.android.synthetic.main.item_list.*
+import java.net.URL
+import android.app.Activity
+import android.util.Log
+import org.jetbrains.anko.*
+// libreria para parsear JSON
+import org.json.JSONArray
 
 /**
  * An activity representing a list of Pings. This activity
@@ -50,8 +56,43 @@ class ItemListActivity : AppCompatActivity() {
             // activity should be in two-pane mode.
             twoPane = true
         }
+        
+        peticionDatos()
+    }
+    /**
+     * Hace una peticion al servidor que utiliza API Rest
+     */
+    private fun peticionDatos(){
 
-        setupRecyclerView(item_list)
+        doAsync {
+            // capturamos los errores de la peticion
+            try {
+                // peticion a un servidor rest que devuelve el json
+                val respuesta = URL("http://18.191.132.111/wp5/?rest_route=/wp/v2/posts").readText()
+                // parsing data
+                // sabemos que recibimos un array de objetos JSON
+                val miJSONArray = JSONArray(respuesta)
+                // recorremos el Array
+                for (jsonIndex in 0..(miJSONArray.length() - 1)) {
+                    // creamos los objetos para recoger los componentes del post
+                    // asignamos los valores en el constructor de la data class 'DummyItem'
+                    val id =  miJSONArray.getJSONObject(jsonIndex).getString("id")
+                    val titulo =  miJSONArray.getJSONObject(jsonIndex).getString("title")
+                    val contenido =  miJSONArray.getJSONObject(jsonIndex).getString("content")
+
+                    DummyContent.addItem(DummyContent.DummyItem(id, titulo, contenido))
+                }
+                // Accedemos al hilo principal
+                uiThread {
+                    setupRecyclerView(item_list)
+                }
+                // Si algo va mal lo capturamos
+            } catch (e: Exception) {
+                uiThread {
+                    longToast("Something go wrong: $e")
+                }
+            }
+        }
     }
 
     private fun setupRecyclerView(recyclerView: RecyclerView) {
@@ -96,7 +137,7 @@ class ItemListActivity : AppCompatActivity() {
         override fun onBindViewHolder(holder: ViewHolder, position: Int) {
             val item = values[position]
             holder.idView.text = item.id
-            holder.contentView.text = item.content
+            holder.contentView.text = item.titulo
 
             with(holder.itemView) {
                 tag = item
